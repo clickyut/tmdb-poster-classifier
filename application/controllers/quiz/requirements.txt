@@ -1,0 +1,15 @@
+# Requirements for CLIP Image Analysis Service
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+flask==2.3.3
+torch==2.0.1
+torchvision==0.15.2
+clip @ git+https://github.com/openai/CLIP.git
+Pillow==10.0.0
+requests==2.31.0
+numpy==1.24.3
+
+# Optional but recommended
+gunicorn==21.2.0  # For production deployment
+python-dotenv==1.0.0  # For environment variables

@@ -1,0 +1,485 @@
+โปรเจกต์: พัฒนาระบบจัดการรูปภาพหลายรูปจาก TMDb สำหรับระบบแผ่นหนัง ความต้องการหลัก ต้องการปรับปรุงระบบ Products ที่มีอยู่แล้ว ให้สามารถเก็บรูปภาพได้หลายรูป (สูงสุด 10 รูป) แทนที่จะเก็บแค่ 1 รูปเหมือนเดิม ข้อกำหนดเฉพาะ 1. ที่มาของรูป: 99% มาจาก The Movie Database (TMDb) 2. การดึงรูป: ต้องการให้คลิกขวา copy URL จาก TMDb แล้ว paste ใส่ได้เลย // คลิกขวา copy บนรูปเลยด้วย 3. การปรับขนาดภาพ (อิงจากฟิลด์ extra ในตาราง products): * DVD (extra 0-2): ปรับขนาดเป็น 1000x1500px * Blu-ray อื่นๆ (extra 5,6,7,8): ตัดบนล่างออกหน่อย แล้วปรับขนาดเป็น อย่าให้ตัดหัวนักแสดงหลัก หรือ ชื่อเรื่อง 1000x1149px * ระบบต้องอ่านค่า extra จากฐานข้อมูลแล้วปรับขนาดอัตโนมัติ extra จะเลือกในหน้า add product 4. เช็คภาพซ้ำ: บางเรื่องมีคนอัพรูปเดียวกันหลายครั้ง ต้องเช็คไม่ให้ซ้ำ ภาพเดียวกันแต่แสงสีอาจต่างกันเล็กน้อย 5. TMDb Integration: ให้ใส่ TMDb ID แล้วดึง poster ภาษา English, ไทย, หรือ main ของหนังมา ความท้าทายใหม่: จัดการสินค้าเก่า 42,000 รายการ ข้อมูลสินค้าเก่า * จำนวน: เกือบ 42,000 products (active = 1) * รูปภาพ: มีอยู่แล้ว 1 รูป/สินค้า ในฟิลด์ products_image * ปัญหา: ชื่อสินค้าไม่ตรงกับ TMDb 100% (มีภาษาไทย-English ผสม) * ประเภท: มีทั้งหนัง และซีรีย์ ระบบที่ต้องการเพิ่ม 1. Auto Search System: * ค้นหา TMDb จากชื่อสินค้าที่มีอยู่ * แสดงผลลัพธ์ให้คนเช็คว่าตรงเรื่อง/ภาค/season กันไหม * ให้เลือกรายการที่ถูกต้อง หรือค้นหาใหม่ หรือข้าม 2. Batch Processing: * ประมวลผลทีละหลายรายการ * บันทึก log การประมวลผล * Resume ได้ถ้าหยุดกลางทาง 3. Quality Control: * แสดงรูป TMDb เปรียบเทียบกับรูปเก่า * ให้คนตัดสินใจว่าจะเปลี่ยนหรือเก็บรูปเก่า * Mark รายการที่เสร็จแล้ว Workflow ที่ต้องการ
+
+สินค้าเก่า → ค้นหา TMDb → แสดงผลลัพธ์ → คนเช็ค → เลือก/ข้าม → ดึงรูป → เก็บรูปใหม่
+Framework: CodeIgniter 2.x
+Database: MySQL
+ตาราง products: มีฟิลด์ products_image เก็บแค่ 1 รูป
+มีระบบ upload รูปอยู่แล้ว แต่แค่รูปเดียว ที่ต้องการเพิ่ม/แก้ไข
+ฐานข้อมูล: เพิ่มตารางใหม่สำหรับเก็บรูปหลายรูป
+TMDb API Integration: ดึงข้อมูลและรูปภาพ
+หน้าจัดการรูป: เลือก, ลบ, เปลี่ยนลำดับ, ตั้งรูปหลัก
+การประมวลผลรูป: ปรับขนาดตามประเภทสินค้า
+หน้าทดสอบแยก: ทำเป็น controllers/models/views แยกเพื่อทดสอบก่อน ฟีเจอร์ที่ต้องการ สำหรับสินค้าใหม่:
+[ ] วาง TMDb URL แล้วแยก ID ได้
+[ ] ดึงโปสเตอร์จาก TMDb API
+[ ] เลือกรูปที่ต้องการ (สูงสุด 10 รูป)
+[ ] ดาวน์โหลดและปรับขนาดอัตโนมัติตาม extra
+[ ] เช็ครูปซ้ำด้วย hash
+[ ] Drag & drop เปลี่ยนลำดับ
+[ ] ตั้งรูปหลัก
+[ ] ลบรูปได้ สำหรับสินค้าเก่า (42,000 รายการ):
+[ ] Auto search TMDb จากชื่อสินค้า
+[ ] แสดงผลลัพธ์การค้นหาให้เช็ค
+[ ] เปรียบเทียบรูปเก่า vs รูปใหม่
+[ ] Batch processing หลายรายการ
+[ ] Resume การทำงานได้
+[ ] Skip รายการที่ไม่พบหรือไม่ตรง
+[ ] Log สถานะการประมวลผล ระบบทั่วไป:
+[ ] Cache ข้อมูล TMDb
+[ ] Log การซิงค์
+[ ] สถิติการใช้งาน ไฟล์ที่จะต้องสร้าง
+Library: Tmdb_api.php
+เชื่อมต่อ TMDb + Search API
+Model: Products_images_model.php
+จัดการข้อมูลรูป
+Controller: Products_images_test.php
+หน้าทดสอบ
+Controller: Products_migration.php
+สำหรับจัดการสินค้าเก่า 42,000 รายการ
+Views: หน้าจัดการ, ทดสอบ, และ migration
+Database Schema: ตารางใหม่ 4-5 ตาราง + index สำหรับ search
+Batch Processing: ระบบคิวสำหรับประมวลผลจำนวนมาก ข้อมูลเพิ่มเติม
+ผู้ใช้: ร้านขาย DVD/Blu-ray ในไทย
+ข้อมูลภาษาไทย: จะมีบ้างใน TMDb แต่ไม่เยอะ
+การใช้งาน: Admin ที่เข้าใจเทคนิคพอสมควร คำถาม
+ควรเริ่มจากระบบสินค้าใหม่ หรือระบบ migration สินค้าเก่าก่อน?
+สำหรับ 42,000 รายการ ควรทำ batch ละกี่รายการ?
+การค้นหา TMDb จากชื่อไทย-อังกฤษผสม มีกลยุทธ์อย่างไร?
+ต้องการระบบ queue/background job ไหม?
+มีข้อกำหนดเพิ่มเติมสำหรับการจัดการซีรีย์ไหม? หมายเหตุ: จะแนบไฟล์ PHP ปัจจุบันให้ดูด้วย เพื่อให้เข้าใจโครงสร้างที่มีอยู่แล้ว
+ต้องการเป็นหน้าใหม่ ไฟล์ใหม่ ไม่ทับไฟล์เดิม เพื่อทดสอบก่อน ถ้าชัวแล้ว ค่อยเอาไปรวมกับของเดิม หรือ จะใช้หน้าใหม่แทนหน้าเดิมเลยก็ได้ เพราะทำหลังบ้านแก้ลิ้งนิดเดียว
+
+------
+
+เราทำตามที่คุณบอก ตามนี้
+
+📋 สรุปไฟล์ทั้งหมด (13 ไฟล์)
+1️⃣ Database (1 ไฟล์)
+
+Artifact: db_schema_new_tables
+บันทึกเป็น: tmdb_database.sql
+ทำอะไร: รัน SQL นี้ก่อนเลย สร้างตาราง 5 ตาราง
+
+2️⃣ Libraries (1 ไฟล์)
+
+Artifact: tmdb_api_library
+บันทึกเป็น: /application/libraries/Tmdb_api.php
+ทำอะไร: Library สำหรับเชื่อมต่อ TMDb API
+
+3️⃣ Models (1 ไฟล์)
+
+Artifact: products_images_model
+บันทึกเป็น: /application/models/quiz/Products_images_model.php
+ทำอะไร: Model จัดการข้อมูลรูปภาพ
+
+4️⃣ Controllers (2 ไฟล์)
+
+Artifact: products_images_test_controller
+
+บันทึกเป็น: /application/controllers/quiz/Products_images_test.php
+
+
+Artifact: products_migration_controller
+
+บันทึกเป็น: /application/controllers/quiz/Products_migration.php
+
+
+
+5️⃣ Views (8 ไฟล์) - ทั้งหมดอยู่ใน /application/views/quiz/
+
+products_images_test_view → products_images_test_view.php
+products_images_manage_view → products_images_manage_view.php
+products_images_settings_view → products_images_settings_view.php
+products_migration_view → products_migration_view.php
+products_migration_start_view → products_migration_start_view.php
+products_migration_process_view → products_migration_process_view.php
+products_migration_complete_view → products_migration_complete_view.php
+products_migration_batch_view → products_migration_batch_view.php
+
+6️⃣ Helpers เพิ่มเติม (2 ไฟล์)
+
+Artifact: rate_limiter_helper
+
+บันทึกเป็น: /application/helpers/rate_limiter_helper.php
+
+
+Artifact: security_helper
+
+บันทึกเป็น: /application/helpers/security_helper.php
+
+
+
+🚀 ขั้นตอนการติดตั้ง Step by Step
+Step 1: เตรียมโฟลเดอร์
+bash# สร้างโฟลเดอร์ที่จำเป็น
+mkdir -p application/models/quiz
+mkdir -p application/controllers/quiz  
+mkdir -p application/views/quiz
+mkdir -p application/helpers
+mkdir -p application/libraries
+mkdir -p backups
+mkdir -p application/cache/tmdb
+mkdir -p application/cache/rate_limit
+
+# ตั้ง permission
+chmod 777 backups
+chmod 777 application/cache
+chmod -R 777 uploads/products
+Step 2: รัน SQL
+
+เปิด phpMyAdmin
+เลือกฐานข้อมูล zorroman_mangodvd
+ไปที่แท็บ SQL
+Copy โค้ดจาก db_schema_new_tables ทั้งหมด
+รัน SQL
+
+Step 3: วางไฟล์ตามโครงสร้างนี้
+/your-project/
+├── application/
+│   ├── libraries/
+│   │   └── Tmdb_api.php
+│   ├── models/
+│   │   └── quiz/
+│   │       └── Products_images_model.php
+│   ├── controllers/
+│   │   └── quiz/
+│   │       ├── Products_images_test.php
+│   │       └── Products_migration.php
+│   ├── helpers/
+│   │   ├── rate_limiter_helper.php
+│   │   └── security_helper.php
+│   └── views/
+│       └── quiz/
+│           ├── products_images_test_view.php
+│           ├── products_images_manage_view.php
+│           ├── products_images_settings_view.php
+│           ├── products_migration_view.php
+│           ├── products_migration_start_view.php
+│           ├── products_migration_process_view.php
+│           ├── products_migration_complete_view.php
+│           └── products_migration_batch_view.php
+Step 4: ตั้งค่า PHP (php.ini)
+inimemory_limit = 256M
+max_execution_time = 300
+post_max_size = 50M
+upload_max_filesize = 20M
+Step 5: เข้าไปตั้งค่า
+
+เปิด http://yoursite.com/quiz/products_images_test/settings
+ใส่ TMDb API Key (ไปขอที่ https://www.themoviedb.org/settings/api)
+ตั้งค่าอื่นๆ:
+
+จำนวนรูปสูงสุด: 10
+คุณภาพรูป: 90
+Cache: 24 ชั่วโมง
+
+
+
+🎯 วิธีใช้งาน
+1. จัดการรูปภาพ
+
+URL: http://yoursite.com/quiz/products_images_test
+เลือกสินค้า → ค้นหาจาก TMDb → เพิ่มรูป
+
+2. Migration สินค้าเก่า
+
+URL: http://yoursite.com/quiz/products_migration
+เริ่มด้วย Batch 10-50 รายการ
+ระบบจะค้นหาและให้เลือกรูปอัตโนมัติ
+
+✅ Checklist ก่อนใช้งาน
+
+ รัน SQL สร้างตาราง
+ วางไฟล์ครบ 13 ไฟล์
+ สร้างโฟลเดอร์ + chmod
+ ตั้งค่า php.ini
+ ใส่ TMDb API Key
+ ทดสอบอัพโหลดรูป
+ ทดสอบค้นหาจาก TMDb
+ Backup ฐานข้อมูล
+
+🔧 กรณีมีปัญหา
+
+Error 500
+
+ตรวจสอบ error log ที่ /application/logs/
+ดู PHP error log
+
+
+อัพโหลดไม่ได้
+
+ตรวจสอบ permission ของ uploads/products
+ตรวจสอบ php.ini settings
+
+
+ค้นหา TMDb ไม่เจอ
+
+ตรวจสอบ API Key
+ลองค้นหาด้วยชื่อภาษาอังกฤษ
+
+
+
+📞 Support
+ถ้าติดปัญหาตรงไหน บอกได้เลยครับ พร้อมช่วยตลอด!
+พร้อมลุยแล้วครับ! 🚀 เริ่มจาก Step 1 ได้เลย
+-------------
+
+-- ตารางหลักสำหรับเก็บรูปภาพหลายรูป
+CREATE TABLE `hhd_products_images` (
+  `image_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `products_id` int(10) UNSIGNED NOT NULL,
+  `image_url` varchar(500) DEFAULT NULL COMMENT 'Original TMDb URL',
+  `image_filename` varchar(255) NOT NULL COMMENT 'ชื่อไฟล์ที่บันทึก',
+  `image_path` varchar(255) NOT NULL COMMENT 'Path ที่เก็บไฟล์',
+  `image_type` enum('poster','backdrop','logo') DEFAULT 'poster',
+  `image_size` varchar(20) DEFAULT NULL COMMENT 'ขนาดรูปต้นฉบับ เช่น w500',
+  `image_language` varchar(10) DEFAULT NULL COMMENT 'ภาษาของรูป en, th',
+  `image_order` int(3) DEFAULT 0 COMMENT 'ลำดับการแสดง',
+  `is_primary` tinyint(1) DEFAULT 0 COMMENT '1=รูปหลัก',
+  `image_hash` varchar(64) DEFAULT NULL COMMENT 'MD5 hash สำหรับเช็คซ้ำ',
+  `created_date` datetime NOT NULL,
+  `created_by` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`image_id`),
+  KEY `idx_products_id` (`products_id`),
+  KEY `idx_image_order` (`image_order`),
+  KEY `idx_is_primary` (`is_primary`),
+  KEY `idx_image_hash` (`image_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='เก็บรูปภาพหลายรูปต่อสินค้า';
+
+-- ตารางเก็บข้อมูล TMDb mapping
+CREATE TABLE `hhd_products_tmdb` (
+  `mapping_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `products_id` int(10) UNSIGNED NOT NULL,
+  `tmdb_id` int(11) DEFAULT NULL COMMENT 'TMDb movie/tv ID',
+  `tmdb_type` enum('movie','tv') DEFAULT 'movie',
+  `tmdb_title` varchar(255) DEFAULT NULL COMMENT 'ชื่อจาก TMDb',
+  `tmdb_original_title` varchar(255) DEFAULT NULL,
+  `tmdb_release_date` date DEFAULT NULL,
+  `tmdb_poster_path` varchar(255) DEFAULT NULL COMMENT 'Main poster path',
+  `tmdb_backdrop_path` varchar(255) DEFAULT NULL,
+  `tmdb_overview` text DEFAULT NULL,
+  `season_number` int(3) DEFAULT NULL COMMENT 'สำหรับซีรีย์',
+  `mapping_status` enum('pending','confirmed','skipped','error') DEFAULT 'pending',
+  `last_sync_date` datetime DEFAULT NULL,
+  `sync_count` int(5) DEFAULT 0 COMMENT 'จำนวนครั้งที่ sync',
+  `created_date` datetime NOT NULL,
+  `created_by` varchar(50) DEFAULT NULL,
+  `modified_date` datetime DEFAULT NULL,
+  `modified_by` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`mapping_id`),
+  UNIQUE KEY `idx_products_id` (`products_id`),
+  KEY `idx_tmdb_id` (`tmdb_id`),
+  KEY `idx_mapping_status` (`mapping_status`),
+  KEY `idx_last_sync` (`last_sync_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Mapping ระหว่าง products และ TMDb';
+
+-- ตารางสำหรับ cache ข้อมูล TMDb
+CREATE TABLE `hhd_tmdb_cache` (
+  `cache_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cache_key` varchar(255) NOT NULL COMMENT 'TMDb endpoint key',
+  `tmdb_id` int(11) NOT NULL,
+  `tmdb_type` enum('movie','tv') DEFAULT 'movie',
+  `cache_data` longtext COMMENT 'JSON response from TMDb',
+  `expire_date` datetime NOT NULL,
+  `created_date` datetime NOT NULL,
+  PRIMARY KEY (`cache_id`),
+  UNIQUE KEY `idx_cache_key` (`cache_key`),
+  KEY `idx_tmdb_id` (`tmdb_id`),
+  KEY `idx_expire` (`expire_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Cache TMDb API responses';
+
+-- ตารางสำหรับ log การ migration สินค้าเก่า
+CREATE TABLE `hhd_products_migration_log` (
+  `log_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `batch_id` varchar(50) NOT NULL COMMENT 'Batch processing ID',
+  `products_id` int(10) UNSIGNED NOT NULL,
+  `products_code` varchar(20) DEFAULT NULL,
+  `products_name` varchar(256) DEFAULT NULL,
+  `tmdb_search_query` varchar(500) DEFAULT NULL COMMENT 'Query ที่ใช้ค้นหา',
+  `tmdb_results_count` int(3) DEFAULT 0 COMMENT 'จำนวนผลลัพธ์',
+  `selected_tmdb_id` int(11) DEFAULT NULL COMMENT 'TMDb ID ที่เลือก',
+  `migration_status` enum('pending','searching','found','not_found','selected','completed','skipped','error') DEFAULT 'pending',
+  `error_message` text DEFAULT NULL,
+  `old_image` varchar(255) DEFAULT NULL COMMENT 'รูปเดิม',
+  `new_images_count` int(2) DEFAULT 0 COMMENT 'จำนวนรูปใหม่',
+  `processed_date` datetime DEFAULT NULL,
+  `processed_by` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`log_id`),
+  KEY `idx_batch_id` (`batch_id`),
+  KEY `idx_products_id` (`products_id`),
+  KEY `idx_migration_status` (`migration_status`),
+  KEY `idx_processed_date` (`processed_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Log การ migrate รูปภาพสินค้าเก่า';
+
+-- ตารางสำหรับเก็บการตั้งค่าระบบ
+CREATE TABLE `hhd_tmdb_settings` (
+  `setting_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` text,
+  `setting_type` enum('string','integer','boolean','json') DEFAULT 'string',
+  `description` varchar(500) DEFAULT NULL,
+  `modified_date` datetime DEFAULT NULL,
+  `modified_by` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`setting_id`),
+  UNIQUE KEY `idx_setting_key` (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='การตั้งค่า TMDb และระบบรูปภาพ';
+
+-- Insert ค่าเริ่มต้น
+INSERT INTO `hhd_tmdb_settings` (`setting_key`, `setting_value`, `setting_type`, `description`) VALUES
+('tmdb_api_key', '', 'string', 'TMDb API Key'),
+('tmdb_api_url', 'https://api.themoviedb.org/3', 'string', 'TMDb API Base URL'),
+('tmdb_image_url', 'https://image.tmdb.org/t/p/', 'string', 'TMDb Image Base URL'),
+('max_images_per_product', '10', 'integer', 'จำนวนรูปสูงสุดต่อสินค้า'),
+('batch_size', '50', 'integer', 'จำนวน products ต่อ batch'),
+('cache_duration_hours', '168', 'integer', 'ระยะเวลา cache (ชั่วโมง)'),
+('image_quality_dvd', '1000x1500', 'string', 'ขนาดรูป DVD'),
+('image_quality_bluray', '1000x1149', 'string', 'ขนาดรูป Blu-ray'),
+('auto_search_enabled', '1', 'boolean', 'เปิดใช้งานการค้นหาอัตโนมัติ');
+
+-- Indexes เพิ่มเติมสำหรับ performance
+CREATE INDEX idx_products_images_combined ON hhd_products_images(products_id, is_primary, image_order);
+CREATE INDEX idx_migration_batch_status ON hhd_products_migration_log(batch_id, migration_status);
+
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: localhost:3306
+-- Generation Time: May 31, 2025 at 12:56 AM
+-- Server version: 5.7.44
+-- PHP Version: 8.1.32
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `zorroman_mangodvd`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `hhd_products`
+--
+
+CREATE TABLE `hhd_products` (
+  `products_id` int(10) UNSIGNED NOT NULL,
+  `products_name` varchar(256) NOT NULL,
+  `products_description` text,
+  `meta_desc` varchar(256) DEFAULT NULL,
+  `products_code` varchar(20) NOT NULL,
+  `disc_type` varchar(100) DEFAULT NULL,
+  `products_image` varchar(64) DEFAULT NULL,
+  `folder_img` varchar(10) NOT NULL,
+  `folder_load` varchar(64) NOT NULL,
+  `cover_used` tinyint(5) DEFAULT NULL,
+  `products_price` decimal(10,2) DEFAULT NULL,
+  `products_quality` int(3) UNSIGNED NOT NULL DEFAULT '1',
+  `products_language` varchar(100) DEFAULT NULL,
+  `cinavia` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+  `active` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+  `create_date` datetime NOT NULL,
+  `create_by` varchar(50) NOT NULL,
+  `change_date` datetime NOT NULL,
+  `change_by` varchar(50) NOT NULL,
+  `new_products` char(1) DEFAULT NULL,
+  `guide_product` char(1) NOT NULL,
+  `hot_product` char(1) NOT NULL,
+  `hotseller` char(1) NOT NULL,
+  `products_status` varchar(45) DEFAULT NULL,
+  `extra` int(1) NOT NULL DEFAULT '0',
+  `products_conver` int(1) NOT NULL,
+  `bag_number` varchar(30) NOT NULL,
+  `bag_page` varchar(30) NOT NULL,
+  `youtube` varchar(256) NOT NULL,
+  `harddisk_number` varchar(20) NOT NULL,
+  `bak_hdd` int(3) NOT NULL,
+  `bak_fname` varchar(256) NOT NULL,
+  `bak_fsize` decimal(10,2) NOT NULL,
+  `bak_iso` int(1) NOT NULL,
+  `bak_ext` int(1) NOT NULL,
+  `bak_num` int(1) NOT NULL,
+  `stock_w` int(5) NOT NULL,
+  `stock_w_shelf_no` varchar(30) NOT NULL,
+  `stock_w_shelf_row` varchar(30) NOT NULL,
+  `stock_w_shelf_col` varchar(30) NOT NULL,
+  `stock_s` int(5) NOT NULL,
+  `stock_s_shelf_no` varchar(30) NOT NULL,
+  `stock_s_shelf_row` varchar(30) NOT NULL,
+  `stock_s_shelf_col` varchar(30) NOT NULL,
+  `stock_c` int(5) NOT NULL,
+  `stock_c_shelf_no` varchar(30) NOT NULL,
+  `stock_c_shelf_row` varchar(30) NOT NULL,
+  `stock_c_shelf_col` varchar(30) NOT NULL,
+  `price_white` int(10) NOT NULL,
+  `price_screen` int(10) NOT NULL,
+  `price_cover` int(10) NOT NULL,
+  `price_box` int(10) NOT NULL,
+  `buy_site` varchar(20) NOT NULL,
+  `buy_status` int(3) NOT NULL,
+  `buy_ord_id` varchar(255) NOT NULL,
+  `buy_pcode` varchar(256) NOT NULL,
+  `buy_ord_date` date NOT NULL,
+  `imdb_url` varchar(100) DEFAULT NULL,
+  `imdb_has` varchar(100) DEFAULT NULL,
+  `imdbapi_auto` char(1) DEFAULT '0' COMMENT 'เช็คว่าเคยใช้ imdbapi ในการค้นหา tag แบบ auto หรือยัง',
+  `imdbapi_error` char(1) NOT NULL COMMENT 'เช็คว่าเคยใช้ imdb ในการค้นหา tag แบบ auto แล้ว error หรือป่าว',
+  `imdbapi_cid` varchar(11) DEFAULT NULL COMMENT 'เก็บว่ามาจากหมวดไหนตอนค้นหา tag',
+  `add2shopee` int(1) NOT NULL DEFAULT '1',
+  `products_name_20` varchar(20) NOT NULL,
+  `cat_lz` int(3) NOT NULL,
+  `cat_sp` int(3) NOT NULL,
+  `adw_feed` int(3) NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `hhd_products`
+--
+ALTER TABLE `hhd_products`
+  ADD PRIMARY KEY (`products_id`),
+  ADD KEY `active` (`active`),
+  ADD KEY `new_products` (`new_products`),
+  ADD KEY `create_date` (`create_date`),
+  ADD KEY `products_code` (`products_code`),
+  ADD KEY `products_name` (`products_name`),
+  ADD KEY `extra` (`extra`),
+  ADD KEY `meta_desc` (`meta_desc`),
+  ADD KEY `products_language` (`products_language`),
+  ADD KEY `stock_w` (`stock_w`),
+  ADD KEY `stock_s` (`stock_s`),
+  ADD KEY `stock_c` (`stock_c`),
+  ADD KEY `products_id` (`products_id`);
+ALTER TABLE `hhd_products` ADD FULLTEXT KEY `products_description` (`products_description`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `hhd_products`
+--
+ALTER TABLE `hhd_products`
+  MODIFY `products_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+ALTER TABLE `hhd_products_images` 
+ADD COLUMN `has_original` tinyint(1) DEFAULT 0 COMMENT 'มีไฟล์ original สำหรับ re-crop' AFTER `image_hash`;
+
+-- เพิ่ม index สำหรับการค้นหาจาก URL
+ALTER TABLE `hhd_products_images` 
+ADD INDEX `idx_image_url` (`image_url`(100));
