@@ -1,23 +1,25 @@
 # TMDb Poster Classifier
 
-AI system สำหรับเลือกภาพ poster จาก TMDb อัตโนมัติ
+ระบบ AI สำหรับเลือกภาพ poster จาก TMDb อัตโนมัติ
 
-## Features
-- แยกภาพ OK/NG (ภาพปกปกติ vs มีข้อความ 4K/Dolby)
-- ใช้ MobileNetV2 
-- Confidence threshold 70%
+## วัตถุประสงค์
+- แยกภาพที่เหมาะกับปก DVD/Bluray (OK) กับภาพที่มีข้อความ 4K/Dolby/วันที่ (NG)
+- ใช้ Deep Learning (MobileNetV2)
+- ลดเวลาการเลือกภาพจาก TMDb
 
-## Structure
+## โครงสร้างโปรเจค
 tmdb-poster-classifier/
 ├── dataset/
-│   ├── ok/
-│   └── ng/
-├── models/
-├── train.py
-├── predict.py
-└── label_tool.py
+│   ├── ok/         # ภาพที่เหมาะกับปก
+│   └── ng/         # ภาพที่มีข้อความไม่พึงประสงค์
+├── models/         # เก็บ trained models
+├── label_tool.py   # เครื่องมือ label ภาพ
+├── train.py        # script สำหรับ train model
+├── predict.py      # script สำหรับทำนายภาพใหม่
+└── web_app.py      # Flask web interface
 
-## Usage
-1. Label images: `python label_tool.py`
-2. Train model: `python train.py`
-3. Predict: `python predict.py image.jpg`
+## Requirements
+- Python 3.8+
+- PyTorch
+- Flask
+- Pillow
